@@ -1,0 +1,485 @@
+/* All styling for the Animator app. The .gleam files only attach class names. */
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { width: 100%; height: 100%; overflow: hidden; }
+html {
+  /* Lets height: auto / width keywords animate for drawers & details. */
+  interpolate-size: allow-keywords;
+}
+
+/* ── Layout: two columns ─────────────────────────────────────────────────── */
+
+.app {
+  display: flex;
+  width: 100vw;
+  height: 100vh;
+  background: #1a1a2e;
+  color: #d4c5a0;
+  font-family: system-ui, sans-serif;
+  font-size: 14px;
+}
+
+/* Left column: the code editor. */
+.code-col {
+  width: 42%;
+  min-width: 320px;
+  max-width: 720px;
+  flex-shrink: 0;
+  display: flex;
+  overflow: hidden;
+  border-right: 1px solid #3a3a5e;
+  background: #0f0f1e;
+  will-change: width, min-width, max-width, opacity;
+  transition:
+    width 520ms cubic-bezier(0.22, 1, 0.36, 1),
+    min-width 520ms cubic-bezier(0.22, 1, 0.36, 1),
+    max-width 520ms cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 380ms cubic-bezier(0.22, 1, 0.36, 1),
+    border-right-width 520ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Keep the column mounted (CodeMirror state) and slide it away like a drawer. */
+.app.code-hidden .code-col {
+  width: 0;
+  min-width: 0;
+  max-width: 0;
+  opacity: 0;
+  border-right-width: 0;
+  pointer-events: none;
+}
+
+/* A small emoji button (the code pane's collapse toggle, and the playback
+   controls once they exist). */
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #2a2a4a;
+  color: #d4c5a0;
+  border: 1px solid #4a4a8a;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  padding: 5px 8px;
+}
+.icon-btn:hover { background: #3a3a5e; }
+
+/* ── Code panel (left column) ───────────────────────────────────────────── */
+
+.drawing-picker {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+}
+.drawing-picker select {
+  flex: 1 1 auto;
+  width: auto;
+  min-width: 90px;
+  height: 36px;
+  padding: 0 38px 0 10px;
+  border: 1px solid #4a4a8a;
+  border-radius: 5px;
+  background: #0d0d1a;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23d4c5a0' d='m6.7 9.3 5.3 5.3 5.3-5.3 1.4 1.4-6.7 6.7-6.7-6.7z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 11px center;
+  background-size: 14px;
+  appearance: none;
+  color: #d4c5a0;
+  font: inherit;
+}
+.drawing-picker select:focus { outline: 2px solid #8a8aca; outline-offset: 1px; }
+.colors-button {
+  flex: 0 0 76px;
+  width: 76px;
+  height: 36px;
+  padding: 0 15px;
+  border: 1px solid #4a4a8a;
+  border-radius: 9px;
+  background: #2a2a4a;
+  color: #d4c5a0;
+  font: 600 13px system-ui, sans-serif;
+  cursor: pointer;
+  transition: background 140ms ease, border-color 140ms ease;
+}
+.colors-button:hover { background: #3a3a5e; border-color: #7777bd; }
+.colors-control { position: relative; flex: 0 0 76px; }
+.color-popover {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + 10px);
+  right: 0;
+  width: min(300px, calc(100vw - 32px));
+  padding: 14px;
+  border: 1px solid #4a4a8a;
+  border-radius: 10px;
+  background: #17172a;
+  box-shadow: 0 12px 32px #0009;
+  transform-origin: top right;
+  will-change: opacity, transform, filter;
+  transition:
+    opacity 220ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 300ms cubic-bezier(0.22, 1, 0.36, 1),
+    filter 220ms cubic-bezier(0.22, 1, 0.36, 1),
+    visibility 0s linear 300ms;
+}
+.color-popover.is-open {
+  visibility: visible;
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  filter: blur(0);
+  pointer-events: auto;
+  transition-delay: 0s;
+}
+.color-popover.is-closed {
+  visibility: hidden;
+  opacity: 0;
+  transform: translateY(-8px) scale(0.96);
+  filter: blur(2px);
+  pointer-events: none;
+}
+.color-popover-heading { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; color: #e8d8b0; font-weight: 600; }
+.palette-count { color: #8c8cae; font: 12px ui-monospace, monospace; }
+.palette-mode-choices { display: flex; gap: 7px; margin-bottom: 10px; }
+.color-section + .color-section { margin-top: 8px; padding-top: 10px; border-top: 1px solid #34344f; }
+.color-section-title { display: block; margin-bottom: 7px; color: #9292b5; font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
+.palette-mode-option { display: flex; align-items: center; gap: 8px; flex: 1; padding: 9px 11px; border: 1px solid #3a3a5e; border-radius: 7px; background: #0d0d1a; color: #c5c5dc; cursor: pointer; }
+.palette-mode-option:has(input:checked) { border-color: #7777bd; background: #24243f; color: #e8d8b0; }
+.palette-mode-option input { margin: 0; accent-color: #8a8aca; }
+.random-color-count { padding: 8px 2px 2px; }
+.count-label { display: flex; align-items: center; justify-content: space-between; gap: 12px; color: #c5c5dc; font-size: 13px; }
+.color-count-input { width: 82px; height: 34px; padding: 0 8px; border: 1px solid #4a4a8a; border-radius: 6px; outline: none; background: #0d0d1a; color: #e8d8b0; font: 14px ui-monospace, monospace; }
+.color-count-input:focus { border-color: #9292dd; box-shadow: 0 0 0 2px #7777bd55; }
+.color-validation-error { margin-top: 7px; color: #ff9292; font-size: 12px; }
+.custom-palette-section { margin-top: 2px; }
+.color-list { display: flex; flex-direction: column; gap: 5px; max-height: 240px; overflow-y: auto; }
+.color-swatch-row { display: flex; align-items: center; gap: 9px; padding: 5px 7px; border-radius: 6px; background: #202039; }
+.palette-color-picker { width: 42px; height: 32px; padding: 2px; border: 1px solid #5a5a7a; border-radius: 6px; background: #17172a; cursor: pointer; }
+.color-value { color: #c5c5dc; font: 12px ui-monospace, monospace; }
+.palette-add { width: 100%; margin-top: 9px; padding: 7px 9px; border: 1px dashed #555577; border-radius: 6px; background: transparent; color: #c5c5dc; text-align: left; cursor: pointer; }
+.palette-add:hover { border-color: #8a8aca; background: #24243f; }
+.color-hint { margin-top: 9px; color: #77778f; font-size: 11px; }
+.code-hide-button {
+  width: 36px;
+  height: 36px;
+  flex: 0 0 36px;
+  padding: 0;
+}
+
+.code-panel {
+  flex: 1;
+  /* Fixed content width so collapse clips like a drawer instead of squashing text. */
+  min-width: 320px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.code-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  background: #1a1a3e;
+  border-bottom: 1px solid #3a3a5e;
+}
+.code-heading { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+.drawing-picker-row {
+  display: flex;
+  align-items: stretch;
+  gap: 12px;
+  margin-top: 7px;
+}
+.code-title {
+  color: #e8d8b0;
+  font-family: 'Georgia', serif;
+  font-size: 16px;
+  letter-spacing: 1px;
+}
+
+/* Wrapper holding the editor. */
+.code-editor-wrap {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+  display: flex;
+}
+/* CodeMirror mount node: grows to fill the panel. */
+.code-editor {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  overflow: hidden;
+  background: #0d0d1a;
+}
+.code-editor .cm-editor { width: 100%; height: 100%; }
+
+/* Collapsible reference of the built-ins available to draw functions. */
+.reference {
+  margin: 8px 14px 12px;
+  border: 1px solid #3a3a5e;
+  border-radius: 4px;
+  background: #0d0d1a;
+  overflow: clip;
+}
+.reference-summary {
+  list-style: none;
+  padding: 6px 12px;
+  cursor: pointer;
+  color: #b8a888;
+  font-family: monospace;
+  font-size: 12px;
+  user-select: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.reference-summary::-webkit-details-marker { display: none; }
+.reference-summary::before {
+  content: "";
+  width: 0;
+  height: 0;
+  border-style: solid;
+  border-width: 4px 0 4px 6px;
+  border-color: transparent transparent transparent currentColor;
+  transform: rotate(0deg);
+  transition: transform 360ms cubic-bezier(0.22, 1, 0.36, 1);
+  flex: 0 0 auto;
+}
+.reference[open] .reference-summary::before {
+  transform: rotate(90deg);
+}
+.reference-summary:hover { color: #e8d8b0; }
+
+/* Smooth Built-ins expand/collapse (Chromium / modern browsers). */
+.reference::details-content {
+  height: 0;
+  overflow: hidden;
+  transition:
+    height 460ms cubic-bezier(0.22, 1, 0.36, 1),
+    content-visibility 460ms allow-discrete;
+}
+.reference[open]::details-content {
+  height: auto;
+}
+
+.reference-body {
+  padding: 4px 12px 10px;
+  border-top: 1px solid #3a3a5e;
+}
+.reference-group { margin-top: 8px; }
+.reference-group-title {
+  color: #8a8aca;
+  font-family: monospace;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 4px;
+}
+.reference-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+  padding: 1px 0;
+}
+.reference-sig {
+  color: #89ddff;
+  font-family: monospace;
+  font-size: 12px;
+  white-space: pre;
+}
+.reference-desc { color: #6a7a8a; font-size: 11px; }
+
+/* ── Animation area (right column) ──────────────────────────────────────── */
+
+.canvas-area {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #0a0a14;
+  container-type: size;
+}
+
+/* The interpreter's List(Path) (or its error), shown as text before the
+   animation pane is built. */
+.output {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  padding: 16px;
+  overflow: auto;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #cfe3ff;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+/* Leave room for the reveal button, which only overlays this pane while the
+   code column is hidden. */
+.app.code-hidden .output { padding-top: 48px; }
+
+/* Playback and drawing controls sit over the lower-right of the canvas. */
+.controls-root {
+  position: absolute;
+  right: 16px;
+  bottom: 16px;
+  z-index: 5;
+  width: min(280px, calc(100% - 32px));
+  /* Anchor both panel + gear to the same corner for the morph. */
+  display: grid;
+  justify-items: end;
+  align-items: end;
+}
+.controls-root > .control-panel,
+.controls-root > .control-gear {
+  grid-area: 1 / 1;
+}
+
+.control-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  padding: 14px;
+  border: 1px solid #3a3a5e;
+  border-radius: 8px;
+  background: #1a1a2eee;
+  transform-origin: bottom right;
+  will-change: transform, opacity, filter;
+  transition:
+    opacity 420ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 480ms cubic-bezier(0.22, 1, 0.36, 1),
+    filter 420ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.control-panel.is-open {
+  opacity: 1;
+  transform: translate3d(0, 0, 0) scale(1);
+  filter: blur(0);
+  pointer-events: auto;
+}
+.control-panel.is-closed {
+  opacity: 0;
+  transform: translate3d(10px, 18px, 0) scale(0.86);
+  filter: blur(2px);
+  pointer-events: none;
+}
+.control-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: -4px -4px 0 0;
+}
+.control-title { color: #e8d8b0; font-size: 14px; font-weight: 600; }
+.control-collapse {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  line-height: 0;
+}
+.control-label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: #d4c5a0;
+  font-size: 13px;
+}
+.control-label input[type="range"] { width: 100%; accent-color: #8a8aca; }
+.speed-control-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.speed-control-row > input { flex: 1; min-width: 60px; }
+.playback-buttons { display: flex; align-items: center; gap: 6px; }
+.playback-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  flex: 0 0 32px;
+  padding: 0;
+  line-height: 0;
+}
+.control-icon {
+  display: block;
+  width: 16px;
+  height: 16px;
+  fill: currentColor;
+}
+.control-gear {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  font-size: 20px;
+  transform-origin: center;
+  will-change: transform, opacity;
+  transition:
+    opacity 360ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 420ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.control-gear.is-visible {
+  opacity: 1;
+  transform: scale(1);
+  pointer-events: auto;
+}
+.control-gear.is-hidden {
+  opacity: 0;
+  transform: scale(0.7);
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .code-col,
+  .control-panel,
+  .control-gear,
+  .reveal-code,
+  .reference-summary::before,
+  .reference::details-content {
+    transition: none !important;
+  }
+}
+
+/* Button that reveals the code column again when it is hidden. */
+.reveal-code {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 10;
+  will-change: transform, opacity;
+  transition:
+    opacity 360ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 420ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.reveal-code.is-visible {
+  opacity: 1;
+  transform: translateX(0) scale(1);
+  pointer-events: auto;
+}
+.reveal-code.is-hidden {
+  opacity: 0;
+  transform: translateX(-8px) scale(0.85);
+  pointer-events: none;
+}
+
+/* A centred square that fits the (possibly non-square) animation area. Give your
+   <canvas> this class, so that drawings aren't stretched. */
+.canvas {
+  width: min(100cqw, 100cqh);
+  height: min(100cqw, 100cqh);
+}
+
